@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "repository-insights",
     "publisher": "danilocolombi",
-    "version": "1.0.18",
+    "version": "1.0.63",
     "name": "Repository Insights",
     "description": "Azure DevOps Extension",
     "categories": [
