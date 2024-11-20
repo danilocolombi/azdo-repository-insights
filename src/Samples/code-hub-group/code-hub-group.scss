@@ -7,3 +7,25 @@
 .icon {
     margin-right: 5px;
 }
+
+
+.bolt-tablist {
+    min-width: 200px;
+    min-height: 100vh;;
+}
+
+.bolt-card-content{
+    overflow: unset !important;
+}
+
+.half-width {
+    flex: 1 1 50%;
+}
+
+.width-100 {
+    width: 100%;
+}
+
+.justify-content-center {
+    justify-content: center;
+}

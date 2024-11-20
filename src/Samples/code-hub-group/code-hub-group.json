@@ -14,5 +14,5 @@
       }
     }
   ],
-  "scopes": ["vso.analytics", "vso.code", "vso.code_status", "vso.code_status"]
+  "scopes": ["vso.analytics", "vso.code", "vso.code_status", "vso.code_status", "vso.build", "vso.work"]
 }
