@@ -77,16 +77,14 @@ export class Contributors extends React.Component<
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
     const { commits } = this.state;
     const { repo } = this.props;
 
     const branchFriendlyName = formatBranchFriendlyName(repo.defaultBranch);
-
     const commitsByMonth = this.organizeCommitsByMonth(commits);
-
     const commitsChartData = Array.from(commitsByMonth.entries())
       .reverse()
       .map(([date, commits]) => ({
@@ -118,6 +116,8 @@ export class Contributors extends React.Component<
         totalCommits: commits.length,
       });
     });
+
+    commitsByPersonChartData.sort((a, b) => b.totalCommits - a.totalCommits);
 
     return (
       <Page className="sample-page width-100">
@@ -166,11 +166,10 @@ export class Contributors extends React.Component<
               </ResponsiveContainer>
             </Card>
           </div>
-          <div className="flex-row flex-grow justify-content-center padding-16 text-center">
+          <div className="chart-row">
             {commitsByPersonChartData.map(({ author, data, totalCommits }) => (
-              <div className="flex-column padding-16 half-width" key={author}>
+              <div className="chart-column" key={author}>
                 <Card
-                  className="flex-grow"
                   titleProps={{ text: `${author} - ${totalCommits} commit(s)` }}
                 >
                   <ResponsiveContainer width="100%" height={200}>
@@ -210,7 +209,7 @@ export class Contributors extends React.Component<
       const gitClient = getClient(GitRestClient);
 
       const commits = await gitClient.getCommits(repo.id, {
-        $top: 500,
+        $top: 1000,
         itemVersion: {
           versionType: GitVersionType.Branch,
           version: formatBranchFriendlyName(repo.defaultBranch),

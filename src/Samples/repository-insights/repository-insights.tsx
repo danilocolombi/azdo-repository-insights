@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as SDK from "azure-devops-extension-sdk";
 
-import "./code-hub-group.scss";
+import "./repository-insights.scss";
 import { Page } from "azure-devops-ui/Page";
 import { showRootComponent } from "../../Common";
 import {
@@ -25,19 +25,25 @@ import {
   IVersionControlRepositoryService,
 } from "azure-devops-extension-api/Git/GitServices";
 import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
-import { getClient } from "azure-devops-extension-api";
+import {
+  CommonServiceIds,
+  getClient,
+  IProjectInfo,
+  IProjectPageService,
+} from "azure-devops-extension-api";
 import { WorkItemsMetrics } from "./work-items-metrics";
 
-interface CodeHubGroupState {
+interface RepositoryInsightsState {
+  project: IProjectInfo;
   repo: GitRepository;
 }
 
-class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
+class RepositoryInsights extends React.Component<{}, RepositoryInsightsState> {
   private selectedTabId: ObservableValue<string>;
 
   constructor(props: {}) {
     super(props);
-    this.selectedTabId = new ObservableValue("WorkItemsMetrics");
+    this.selectedTabId = new ObservableValue("Pulse");
   }
 
   public componentDidMount() {
@@ -61,10 +67,10 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
-    const { repo } = this.state;
+    const { repo, project } = this.state;
 
     const providers = new ObservableArray<IVssContributedTab>();
 
@@ -91,12 +97,12 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
       {
         id: "PipelinesMetrics",
         name: "Pipelines Metrics",
-        render: () => <PipelinesMetrics repo={repo} />,
+        render: () => <PipelinesMetrics repo={repo} project={project} />,
       },
       {
         id: "WorkItemsMetrics",
         name: "Work Items Metrics",
-        render: () => <WorkItemsMetrics repo={repo} />,
+        render: () => <WorkItemsMetrics repo={repo} project={project} />,
       }
     );
 
@@ -130,6 +136,17 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
 
   private async loadRepositoryData(): Promise<void> {
     try {
+      const pps = await SDK.getService<IProjectPageService>(
+        CommonServiceIds.ProjectPageService
+      );
+
+      const project = await pps.getProject();
+
+      if (!project) {
+        SDK.notifyLoadFailed("Failed to load project context");
+        return;
+      }
+
       const repoSvc = await SDK.getService<IVersionControlRepositoryService>(
         GitServiceIds.VersionControlRepositoryService
       );
@@ -137,6 +154,7 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
       const repository = await repoSvc.getCurrentGitRepository();
 
       if (!repository) {
+        SDK.notifyLoadFailed("Failed to load repository");
         return;
       }
 
@@ -144,6 +162,7 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
       const repoDetails = await gitClient.getRepository(repository.id);
 
       this.setState({
+        project: project,
         repo: repoDetails,
       });
 
@@ -154,4 +173,4 @@ class CodeHubGroup extends React.Component<{}, CodeHubGroupState> {
   }
 }
 
-showRootComponent(<CodeHubGroup />);
+showRootComponent(<RepositoryInsights />);

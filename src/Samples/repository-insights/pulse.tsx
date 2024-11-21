@@ -49,7 +49,13 @@ import { Ago } from "azure-devops-ui/Ago";
 import { AgoFormat } from "azure-devops-ui/Utilities/Date";
 import { getClient } from "azure-devops-extension-api";
 import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
-import { formatBranchFriendlyName } from "../../utils";
+import {
+  formatBranchFriendlyName,
+  getOneMonthAgo,
+  getOneWeekAgo,
+  getOneYearAgo,
+  isValidDate,
+} from "../../utils";
 
 interface PulseState {
   pullRequests: GitPullRequest[];
@@ -82,10 +88,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
 
       SDK.ready()
         .then(() => {
-          const oneYearAgo = new Date();
-          oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-
-          this.loadRepositoryData(oneYearAgo);
+          this.loadRepositoryData(getOneMonthAgo());
         })
         .catch((error) => {
           console.error("SDK ready failed: ", error);
@@ -100,35 +103,10 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
     const { pullRequests, commits, fromDate } = this.state;
-
-    const mergedPullRequestsCount = pullRequests.filter(
-      (pr) => pr.status === PullRequestStatus.Completed
-    ).length;
-    const openPullRequestsCount = pullRequests.filter(
-      (pr) => pr.status === PullRequestStatus.Active
-    ).length;
-
-    const prStats = [
-      {
-        label: "Active pull requests",
-        value: pullRequests.length,
-        icon: "OpenSource",
-      },
-      {
-        label: "Merged pull requests",
-        value: mergedPullRequestsCount,
-        icon: "BranchMerge",
-      },
-      {
-        label: "Open pull requests",
-        value: openPullRequestsCount,
-        icon: "BranchCompare",
-      },
-    ];
 
     const commitsByAuthor = new Map<string, number>();
     commits.forEach((commit) => {
@@ -173,6 +151,34 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       pullRequests.filter((pr) => pr.status === PullRequestStatus.Active)
     );
 
+    const mergedPullRequestsCount = pullRequests.filter(
+      (pr) => pr.status === PullRequestStatus.Completed
+    ).length;
+    const openPullRequestsCount = pullRequests.filter(
+      (pr) => pr.status === PullRequestStatus.Active
+    ).length;
+
+    const activePullRequestsCount =
+      mergedPullRequestsCount + openPullRequestsCount;
+
+    const prStats = [
+      {
+        label: "Active pull requests",
+        value: activePullRequestsCount,
+        icon: "OpenSource",
+      },
+      {
+        label: "Merged pull requests",
+        value: mergedPullRequestsCount,
+        icon: "BranchMerge",
+      },
+      {
+        label: "Open pull requests",
+        value: openPullRequestsCount,
+        icon: "BranchCompare",
+      },
+    ];
+
     return (
       <Page className="sample-page width-100">
         <CustomHeader className="bolt-header-with-commandbar">
@@ -194,7 +200,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
         </CustomHeader>
         <div className="bolt-page-content padding-16">
           <Card
-            className="flex-grow"
+            className="flex-grow padding-16"
             titleProps={{ text: "Overview", ariaLevel: 3 }}
           >
             <div className="flex-row" style={{ flexWrap: "wrap" }}>
@@ -213,74 +219,85 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
               ))}
             </div>
           </Card>
-          <div className="flex-row flex-grow">
-            <div className="flex-column padding-16 half-width justify-content-center">
-              <div className="body-xl primary-text">{content}</div>
-            </div>
-            <div className="flex-column padding-16 half-width">
-              <Card>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={commitsBarData}>
-                    <Bar
-                      dataKey="commits"
-                      fill="#8884d8"
-                      margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                      barSize={20}
-                    ></Bar>
-                    <XAxis dataKey="name" padding={{ left: 10, right: 10 }} />
-                    <YAxis />
-                    <Legend />
-                    <Tooltip />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            </div>
+          <div className="flex-row flex-grow padding-16 text-center">
+            <div className="body-xl primary-text">{content}</div>
           </div>
-          <Header
-            title={"Pull Requests Merged"}
-            titleSize={TitleSize.Medium}
-            titleIconProps={{ iconName: "BranchMerge" }}
-            titleAriaLevel={3}
-          />
-          <Card>
-            <div style={{ display: "flex", height: "100%" }}>
-              <ScrollableList
-                itemProvider={mergedPRs}
-                renderRow={this.renderRow}
-                width="100%"
-              />
-            </div>
-          </Card>
-          <Header
-            title={"Open Pull Requests"}
-            titleSize={TitleSize.Medium}
-            titleIconProps={{ iconName: "BranchCompare" }}
-            titleAriaLevel={3}
-          />
-          <Card>
-            <div style={{ display: "flex", height: "100%" }}>
-              <ScrollableList
-                itemProvider={openPRs}
-                renderRow={this.renderRowOpenPr}
-                width="100%"
-              />
-            </div>
-          </Card>
+          <div className="flex-row flex-grow padding-16">
+            <Card className="flex-grow">
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={commitsBarData}>
+                  <Bar
+                    dataKey="commits"
+                    fill="#8884d8"
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                    barSize={20}
+                  ></Bar>
+                  <XAxis dataKey="name" padding={{ left: 10, right: 10 }} />
+                  <YAxis />
+                  <Legend />
+                  <Tooltip shared={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </div>
+          <div className="padding-16">
+            <Header
+              title={"Pull Requests Merged"}
+              titleSize={TitleSize.Medium}
+              titleIconProps={{ iconName: "BranchMerge" }}
+              titleAriaLevel={3}
+            />
+            <Card>
+              <div style={{ display: "flex", height: "100%" }}>
+                <ScrollableList
+                  itemProvider={mergedPRs}
+                  renderRow={this.renderRow}
+                  width="100%"
+                />
+              </div>
+            </Card>
+          </div>
+          <div className="padding-16">
+            <Header
+              title={"Open Pull Requests"}
+              titleSize={TitleSize.Medium}
+              titleIconProps={{ iconName: "BranchCompare" }}
+              titleAriaLevel={3}
+            />
+            <Card>
+              <div style={{ display: "flex", height: "100%" }}>
+                <ScrollableList
+                  itemProvider={openPRs}
+                  renderRow={this.renderRowOpenPr}
+                  width="100%"
+                />
+              </div>
+            </Card>
+          </div>
         </div>
       </Page>
     );
   }
 
-  private async loadRepositoryData(fromDate: Date): Promise<void> {
+  private async loadRepositoryData(newFromDate: Date): Promise<void> {
     try {
+      if (this.state !== null) {
+        const { fromDate } = this.state;
+
+        if (isValidDate(fromDate) && fromDate === newFromDate) {
+          SDK.notifyLoadSucceeded();
+          return;
+        }
+      }
+
       const searchCriteria = {
         status: PullRequestStatus.All,
-        minTime: fromDate,
+        minTime: newFromDate,
       } as GitPullRequestSearchCriteria;
 
       const gitClient = getClient(GitRestClient);
@@ -289,6 +306,8 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
 
       const prs = await gitClient.getPullRequests(repo.id, searchCriteria);
 
+      console.log(prs);
+
       const itemVersion: GitVersionDescriptor = {
         versionType: GitVersionType.Branch,
         version: formatBranchFriendlyName(repo.defaultBranch),
@@ -296,7 +315,8 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       };
 
       const gitCommitSearchCriteria = {
-        fromDate: fromDate,
+        fromDate: newFromDate,
+        $top: 1000,
         itemVersion: itemVersion,
       } as unknown as GitQueryCommitsCriteria;
 
@@ -308,7 +328,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       this.setState({
         pullRequests: prs,
         commits,
-        fromDate,
+        fromDate: newFromDate,
       });
 
       SDK.notifyLoadSucceeded();
@@ -394,9 +414,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       id: "1week",
       important: false,
       onActivate: () => {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        this.loadRepositoryData(oneWeekAgo);
+        this.loadRepositoryData(getOneWeekAgo());
       },
       text: "1 week",
     },
@@ -404,9 +422,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       id: "1month",
       important: false,
       onActivate: () => {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-        this.loadRepositoryData(oneMonthAgo);
+        this.loadRepositoryData(getOneMonthAgo());
       },
       text: "1 month",
     },
@@ -414,9 +430,7 @@ export class Pulse extends React.Component<PulseProps, PulseState> {
       id: "1year",
       important: false,
       onActivate: () => {
-        const oneYearAgo = new Date();
-        oneYearAgo.setDate(oneYearAgo.getDate() - 365 * 3);
-        this.loadRepositoryData(oneYearAgo);
+        this.loadRepositoryData(getOneYearAgo());
       },
       text: "1 year",
     },

@@ -4,6 +4,7 @@ import React from "react";
 import {
   CommonServiceIds,
   getClient,
+  IProjectInfo,
   IProjectPageService,
 } from "azure-devops-extension-api";
 import {
@@ -17,7 +18,6 @@ import {
   ISimpleTableCell,
   ITableColumn,
   renderSimpleCell,
-  SimpleTableCell,
   sortItems,
   SortOrder,
   Table,
@@ -51,8 +51,15 @@ import {
   WorkItem,
   WorkItemTrackingRestClient,
 } from "azure-devops-extension-api/WorkItemTracking";
+import {
+  getOneMonthAgo,
+  getOneWeekAgo,
+  getOneYearAgo,
+  isValidDate,
+} from "../../utils";
 
 interface WorkItemsMetricsProps {
+  project: IProjectInfo;
   repo: GitRepository;
 }
 
@@ -109,10 +116,7 @@ export class WorkItemsMetrics extends React.Component<
 
       SDK.ready()
         .then(() => {
-          const fiveYearsAgo = new Date();
-          fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-
-          this.loadWorkItemsMetrics(fiveYearsAgo);
+          this.loadWorkItemsMetrics(getOneMonthAgo());
         })
         .catch((error) => {
           console.error("SDK ready failed: ", error);
@@ -159,7 +163,7 @@ export class WorkItemsMetrics extends React.Component<
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
     const { workItems, fromDate } = this.state;
@@ -198,7 +202,7 @@ export class WorkItemsMetrics extends React.Component<
         <div className="bolt-page-content padding-16">
           <Card
             className="bolt-table-card"
-            titleProps={{ text: "Work items close by PRs" }}
+            titleProps={{ text: "Work items linked to closed PRs" }}
           >
             <div className="flex-grow">
               <div className="flex-grow">
@@ -234,23 +238,22 @@ export class WorkItemsMetrics extends React.Component<
     );
   }
 
-  private async loadWorkItemsMetrics(fromDate: Date): Promise<void> {
+  private async loadWorkItemsMetrics(newFromDate: Date): Promise<void> {
     try {
-      const pps = await SDK.getService<IProjectPageService>(
-        CommonServiceIds.ProjectPageService
-      );
+      if (this.state !== null) {
+        const { fromDate } = this.state;
 
-      const project = await pps.getProject();
-
-      if (!project) {
-        return;
+        if (isValidDate(fromDate) && fromDate === newFromDate) {
+          SDK.notifyLoadSucceeded();
+          return;
+        }
       }
 
-      const { repo } = this.props;
+      const { project, repo } = this.props;
 
       const searchCriteria = {
         status: PullRequestStatus.Completed,
-        minTime: fromDate,
+        minTime: newFromDate,
         includeLinks: true,
         targetRefName: repo.defaultBranch,
       } as GitPullRequestSearchCriteria;
@@ -259,7 +262,15 @@ export class WorkItemsMetrics extends React.Component<
 
       const prs = await gitClient.getPullRequests(repo.id, searchCriteria);
 
-      const results = await Promise.all(
+      if (prs.length === 0) {
+        this.setState({
+          workItems: [],
+          fromDate: newFromDate,
+        });
+        return;
+      }
+
+      const workItemRefs = await Promise.all(
         prs.map(({ repository, pullRequestId }) =>
           gitClient.getPullRequestWorkItemRefs(repository.id, pullRequestId)
         )
@@ -267,11 +278,19 @@ export class WorkItemsMetrics extends React.Component<
 
       const workItemIds = Array.from(
         new Set(
-          results.reduce((acc, workItems) => {
+          workItemRefs.reduce((acc, workItems) => {
             return acc.concat(workItems.map((workItem) => Number(workItem.id)));
           }, [] as number[])
         )
       );
+
+      if (workItemIds.length === 0) {
+        this.setState({
+          workItems: [],
+          fromDate: newFromDate,
+        });
+        return;
+      }
 
       const client = getClient(WorkItemTrackingRestClient);
 
@@ -285,7 +304,7 @@ export class WorkItemsMetrics extends React.Component<
 
       this.setState({
         workItems,
-        fromDate,
+        fromDate: newFromDate,
       });
     } catch (error) {
       console.error("Failed to load project context: ", error);
@@ -297,9 +316,7 @@ export class WorkItemsMetrics extends React.Component<
       id: "1week",
       important: false,
       onActivate: () => {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        this.loadWorkItemsMetrics(oneWeekAgo);
+        this.loadWorkItemsMetrics(getOneWeekAgo());
       },
       text: "1 week",
     },
@@ -307,9 +324,7 @@ export class WorkItemsMetrics extends React.Component<
       id: "1month",
       important: false,
       onActivate: () => {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-        this.loadWorkItemsMetrics(oneMonthAgo);
+        this.loadWorkItemsMetrics(getOneMonthAgo());
       },
       text: "1 month",
     },
@@ -317,9 +332,7 @@ export class WorkItemsMetrics extends React.Component<
       id: "1year",
       important: false,
       onActivate: () => {
-        const oneYearAgo = new Date();
-        oneYearAgo.setDate(oneYearAgo.getDate() - 365 * 3);
-        this.loadWorkItemsMetrics(oneYearAgo);
+        this.loadWorkItemsMetrics(getOneYearAgo());
       },
       text: "1 year",
     },

@@ -65,7 +65,7 @@ export class Dependencies extends React.Component<
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
     const { dependencies } = this.state;

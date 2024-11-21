@@ -5,6 +5,7 @@ import { Build, BuildRestClient } from "azure-devops-extension-api/Build";
 import {
   CommonServiceIds,
   getClient,
+  IProjectInfo,
   IProjectPageService,
 } from "azure-devops-extension-api";
 import { GitRepository } from "azure-devops-extension-api/Git/Git";
@@ -43,8 +44,15 @@ import {
   IFilterState,
 } from "azure-devops-ui/Utilities/Filter";
 import { KeywordFilterBarItem } from "azure-devops-ui/TextFilterBarItem";
+import {
+  getOneMonthAgo,
+  getOneWeekAgo,
+  getOneYearAgo,
+  isValidDate,
+} from "../../utils";
 
 interface PipelinesMetricsProps {
+  project: IProjectInfo;
   repo: GitRepository;
 }
 
@@ -112,9 +120,7 @@ export class PipelinesMetrics extends React.Component<
 
       SDK.ready()
         .then(() => {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-          this.loadPipelineMetrics(oneWeekAgo);
+          this.loadPipelineMetrics(getOneMonthAgo());
         })
         .catch((error) => {
           console.error("SDK ready failed: ", error);
@@ -161,7 +167,7 @@ export class PipelinesMetrics extends React.Component<
 
   public render(): JSX.Element {
     if (!this.state) {
-      return <div>Loading...</div>;
+      return <div></div>;
     }
 
     const { stats, fromDate } = this.state;
@@ -274,26 +280,24 @@ export class PipelinesMetrics extends React.Component<
     );
   }
 
-  private async loadPipelineMetrics(fromDate: Date): Promise<void> {
+  private async loadPipelineMetrics(newFromDate: Date): Promise<void> {
     try {
-      const pps = await SDK.getService<IProjectPageService>(
-        CommonServiceIds.ProjectPageService
-      );
+      if (this.state !== null) {
+        const { fromDate } = this.state;
 
-      const project = await pps.getProject();
-
-      if (!project) {
-        return;
+        if (isValidDate(fromDate) && fromDate === newFromDate) {
+          SDK.notifyLoadSucceeded();
+          return;
+        }
       }
-
-      const { repo } = this.props;
+      const { project, repo } = this.props;
 
       const builds = await getClient(BuildRestClient).getBuilds(
         project.id,
         undefined,
         undefined,
         undefined,
-        fromDate,
+        newFromDate,
         undefined,
         undefined,
         undefined,
@@ -313,6 +317,14 @@ export class PipelinesMetrics extends React.Component<
       );
 
       const map = new Map<string, { builds: Build[] }>();
+
+      if (builds.length === 0) {
+        this.setState({
+          stats: [],
+          fromDate: newFromDate,
+        });
+        return;
+      }
 
       builds
         .filter((run) => run.finishTime !== undefined)
@@ -354,7 +366,7 @@ export class PipelinesMetrics extends React.Component<
 
       this.setState({
         stats,
-        fromDate,
+        fromDate: newFromDate,
       });
     } catch (error) {
       console.error("Failed to load project context: ", error);
@@ -366,9 +378,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1week",
       important: false,
       onActivate: () => {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        this.loadPipelineMetrics(oneWeekAgo);
+        this.loadPipelineMetrics(getOneWeekAgo());
       },
       text: "1 week",
     },
@@ -376,9 +386,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1month",
       important: false,
       onActivate: () => {
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-        this.loadPipelineMetrics(oneMonthAgo);
+        this.loadPipelineMetrics(getOneMonthAgo());
       },
       text: "1 month",
     },
@@ -386,9 +394,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1year",
       important: false,
       onActivate: () => {
-        const oneYearAgo = new Date();
-        oneYearAgo.setDate(oneYearAgo.getDate() - 365 * 3);
-        this.loadPipelineMetrics(oneYearAgo);
+        this.loadPipelineMetrics(getOneYearAgo());
       },
       text: "1 year",
     },
