@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "repository-insights-dev",
     "publisher": "danilocolombi",
-    "version": "1.0.247",
+    "version": "0.0.1",
     "name": "Repository Insights",
     "description": "Azure DevOps Extension",
     "categories": [
@@ -20,9 +20,12 @@
     },
     "content": {
         "details": {
-            "path": "overview.md"
+          "path": "README.md"
+        },
+        "license": {
+          "path": "LICENSE"
         }
-    },
+      },
     "files": [
         {
             "path": "static",
