@@ -1,21 +1,23 @@
 import * as SDK from "azure-devops-extension-sdk";
 import React from "react";
 
-import { Build, BuildRestClient } from "azure-devops-extension-api/Build";
 import {
   CommonServiceIds,
   getClient,
   IProjectInfo,
   IProjectPageService,
 } from "azure-devops-extension-api";
-import { GitRepository } from "azure-devops-extension-api/Git/Git";
+import {
+  GitPullRequestSearchCriteria,
+  GitRepository,
+  PullRequestStatus,
+} from "azure-devops-extension-api/Git/Git";
 import { Card } from "azure-devops-ui/Card";
 import {
   ColumnSorting,
   ISimpleTableCell,
   ITableColumn,
   renderSimpleCell,
-  SimpleTableCell,
   sortItems,
   SortOrder,
   Table,
@@ -44,35 +46,32 @@ import {
   IFilterState,
 } from "azure-devops-ui/Utilities/Filter";
 import { KeywordFilterBarItem } from "azure-devops-ui/TextFilterBarItem";
+import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
+import {
+  WorkItem,
+  WorkItemTrackingRestClient,
+} from "azure-devops-extension-api/WorkItemTracking";
 import {
   getOneMonthAgo,
   getOneWeekAgo,
   getOneYearAgo,
   isValidDate,
-} from "../../utils";
+} from "../utils";
 
-interface PipelinesMetricsProps {
+interface WorkItemsMetricsProps {
   project: IProjectInfo;
   repo: GitRepository;
 }
 
-interface PipelinesMetricsState {
-  stats: PipelineStats[];
+interface WorkItemsMetricsState {
+  workItems: WorkItem[];
   fromDate: Date;
 }
 
-interface PipelineStats {
-  name: string;
-  totalDurationInMinutes: number;
-  totalBuilds: number;
-  averageBuildTimeInMinutes: number;
-}
-
 export interface ITableItem extends ISimpleTableCell {
-  name: string;
-  totalDurationInMinutes: number;
-  totalBuilds: number;
-  averageBuildTimeInMinutes: number;
+  title: string;
+  type: number;
+  state: number;
 }
 
 interface FilterValue extends IFilterState {
@@ -81,9 +80,9 @@ interface FilterValue extends IFilterState {
   };
 }
 
-export class PipelinesMetrics extends React.Component<
-  PipelinesMetricsProps,
-  PipelinesMetricsState
+export class WorkItemsMetrics extends React.Component<
+  WorkItemsMetricsProps,
+  WorkItemsMetricsState
 > {
   private filter: Filter;
   private allTableItems: ITableItem[] = [];
@@ -93,20 +92,17 @@ export class PipelinesMetrics extends React.Component<
   );
   private sortFunctions = [
     (item1: ITableItem, item2: ITableItem): number => {
-      return item1.name.localeCompare(item2.name);
+      return item1.title.localeCompare(item2.title);
     },
     (item1: ITableItem, item2: ITableItem): number => {
-      return item1.totalBuilds - item2.totalBuilds;
+      return item1.type - item2.type;
     },
     (item1: ITableItem, item2: ITableItem): number => {
-      return item1.totalDurationInMinutes - item2.totalDurationInMinutes;
-    },
-    (item1: ITableItem, item2: ITableItem): number => {
-      return item1.averageBuildTimeInMinutes - item2.averageBuildTimeInMinutes;
+      return item1.state - item2.state;
     },
   ];
   private sortingBehavior = this.updateSortingBehavior();
-  constructor(props: PipelinesMetricsProps) {
+  constructor(props: WorkItemsMetricsProps) {
     super(props);
     this.filter = new Filter();
     this.filter.subscribe(() => {
@@ -120,7 +116,7 @@ export class PipelinesMetrics extends React.Component<
 
       SDK.ready()
         .then(() => {
-          this.loadPipelineMetrics(getOneMonthAgo());
+          this.loadWorkItemsMetrics(getOneMonthAgo());
         })
         .catch((error) => {
           console.error("SDK ready failed: ", error);
@@ -139,7 +135,7 @@ export class PipelinesMetrics extends React.Component<
       this.filteredTableItems = this.allTableItems;
     } else {
       this.filteredTableItems = this.allTableItems.filter((item) =>
-        item.name
+        item.title
           .toLowerCase()
           .includes(filterValue.searchTerm.value.toLowerCase())
       );
@@ -170,30 +166,18 @@ export class PipelinesMetrics extends React.Component<
       return <div></div>;
     }
 
-    const { stats, fromDate } = this.state;
+    const { workItems, fromDate } = this.state;
 
-    this.allTableItems = stats as ITableItem[];
+    this.allTableItems = workItems.map((workItem) => ({
+      title: workItem.fields["System.Title"],
+      type: workItem.fields["System.WorkItemType"],
+      state: workItem.fields["System.State"],
+    }));
 
     this.filteredTableItems = this.allTableItems;
 
     this.itemProvider = new ObservableValue<ArrayItemProvider<ITableItem>>(
       new ArrayItemProvider(this.filteredTableItems)
-    );
-
-    const total = stats.reduce(
-      (acc, stats) => {
-        acc.totalDurationInMinutes += stats.totalDurationInMinutes;
-        acc.totalBuilds += stats.totalBuilds;
-        acc.averageBuildTimeInMinutes += stats.averageBuildTimeInMinutes;
-        acc.count += 1;
-        return acc;
-      },
-      {
-        totalDurationInMinutes: 0,
-        totalBuilds: 0,
-        averageBuildTimeInMinutes: 0,
-        count: 0,
-      }
     );
 
     return (
@@ -206,7 +190,7 @@ export class PipelinesMetrics extends React.Component<
                 className="text-ellipsis"
                 titleSize={TitleSize.Large}
               >
-                Pipeline Metrics
+                Work Items Metrics
               </HeaderTitle>
             </HeaderTitleRow>
             <HeaderDescription>
@@ -217,41 +201,15 @@ export class PipelinesMetrics extends React.Component<
         </CustomHeader>
         <div className="bolt-page-content padding-16">
           <Card
-            className="flex-grow"
-            titleProps={{ text: "All Pipelines", ariaLevel: 3 }}
+            className="bolt-table-card"
+            titleProps={{ text: "Work items linked to closed PRs" }}
           >
-            <div className="flex-row" style={{ flexWrap: "wrap" }}>
-              <div className="flex-column" style={{ minWidth: "160px" }}>
-                <div className="body-m secondary-text">Pipelines Count</div>
-                <div className="body-m primary-text">{total.count}</div>
-              </div>
-              <div className="flex-column" style={{ minWidth: "160px" }}>
-                <div className="body-m secondary-text">Total Runs</div>
-                <div className="body-m primary-text">{total.totalBuilds}</div>
-              </div>
-              <div className="flex-column" style={{ minWidth: "160px" }}>
-                <div className="body-m secondary-text">Total Duration</div>
-                <div className="body-m primary-text">
-                  {total.totalDurationInMinutes} minutes
-                </div>
-              </div>
-              <div className="flex-column" style={{ minWidth: "160px" }}>
-                <div className="body-m secondary-text">Average Duration</div>
-                <div className="body-m primary-text">
-                  {total.averageBuildTimeInMinutes} minutes
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-        <div className="bolt-page-content padding-16">
-          <Card className="bolt-table-card">
             <div className="flex-grow">
               <div className="flex-grow">
                 <FilterBar filter={this.filter}>
                   <KeywordFilterBarItem
                     filterItemKey="searchTerm"
-                    placeholder="Filter by pipeline name"
+                    placeholder="Filter by work item"
                   />
                 </FilterBar>
               </div>
@@ -261,7 +219,7 @@ export class PipelinesMetrics extends React.Component<
                     itemProvider: ArrayItemProvider<ITableItem>;
                   }) => (
                     <Table<ITableItem>
-                      ariaLabel="Pipelines Metrics"
+                      ariaLabel="Work items Metrics"
                       columns={columns}
                       behaviors={[this.sortingBehavior]}
                       itemProvider={observableProps.itemProvider}
@@ -280,7 +238,7 @@ export class PipelinesMetrics extends React.Component<
     );
   }
 
-  private async loadPipelineMetrics(newFromDate: Date): Promise<void> {
+  private async loadWorkItemsMetrics(newFromDate: Date): Promise<void> {
     try {
       if (this.state !== null) {
         const { fromDate } = this.state;
@@ -290,82 +248,62 @@ export class PipelinesMetrics extends React.Component<
           return;
         }
       }
+
       const { project, repo } = this.props;
 
-      const builds = await getClient(BuildRestClient).getBuilds(
-        project.id,
-        undefined,
-        undefined,
-        undefined,
-        newFromDate,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        repo.id,
-        "TfsGit"
-      );
+      const searchCriteria = {
+        status: PullRequestStatus.Completed,
+        minTime: newFromDate,
+        includeLinks: true,
+        targetRefName: repo.defaultBranch,
+      } as GitPullRequestSearchCriteria;
 
-      const map = new Map<string, { builds: Build[] }>();
+      const gitClient = getClient(GitRestClient);
 
-      if (builds.length === 0) {
+      const prs = await gitClient.getPullRequests(repo.id, searchCriteria);
+
+      if (prs.length === 0) {
         this.setState({
-          stats: [],
+          workItems: [],
           fromDate: newFromDate,
         });
         return;
       }
 
-      builds
-        .filter((run) => run.finishTime !== undefined)
-        .forEach((build) => {
-          const key = build.definition.name;
-          const currentValue = map.get(key);
-          if (!currentValue) {
-            map.set(key, { builds: [build] });
-          } else {
-            currentValue.builds.push(build);
-          }
+      const workItemRefs = await Promise.all(
+        prs.map(({ repository, pullRequestId }) =>
+          gitClient.getPullRequestWorkItemRefs(repository.id, pullRequestId)
+        )
+      );
+
+      const workItemIds = Array.from(
+        new Set(
+          workItemRefs.reduce((acc, workItems) => {
+            return acc.concat(workItems.map((workItem) => Number(workItem.id)));
+          }, [] as number[])
+        )
+      );
+
+      if (workItemIds.length === 0) {
+        this.setState({
+          workItems: [],
+          fromDate: newFromDate,
         });
+        return;
+      }
 
-      const stats: PipelineStats[] = [];
-      map.forEach((value, key) => {
-        const builds = value.builds;
-        const totalBuilds = builds.length;
-        const totalDuration = builds.reduce((acc, build) => {
-          return acc + build.finishTime.getTime() - build.startTime.getTime();
-        }, 0);
+      const client = getClient(WorkItemTrackingRestClient);
 
-        const averageBuildTime = totalDuration / totalBuilds;
-
-        const averageBuildTimeInMinutes = Math.floor(
-          averageBuildTime / (1000 * 60)
-        );
-
-        const totalDurationInMinutes = Math.floor(totalDuration / (1000 * 60));
-
-        stats.push({
-          name: key,
-          totalBuilds,
-          totalDurationInMinutes,
-          averageBuildTimeInMinutes,
-        });
-      });
+      const workItems = await client.getWorkItems(workItemIds, project.name, [
+        "System.Title",
+        "System.WorkItemType",
+        "System.State",
+      ]);
 
       SDK.notifyLoadSucceeded();
 
       this.setState({
-        stats,
+        workItems,
         fromDate: newFromDate,
       });
     } catch (error) {
@@ -378,7 +316,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1week",
       important: false,
       onActivate: () => {
-        this.loadPipelineMetrics(getOneWeekAgo());
+        this.loadWorkItemsMetrics(getOneWeekAgo());
       },
       text: "1 week",
     },
@@ -386,7 +324,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1month",
       important: false,
       onActivate: () => {
-        this.loadPipelineMetrics(getOneMonthAgo());
+        this.loadWorkItemsMetrics(getOneMonthAgo());
       },
       text: "1 month",
     },
@@ -394,7 +332,7 @@ export class PipelinesMetrics extends React.Component<
       id: "1year",
       important: false,
       onActivate: () => {
-        this.loadPipelineMetrics(getOneYearAgo());
+        this.loadWorkItemsMetrics(getOneYearAgo());
       },
       text: "1 year",
     },
@@ -403,8 +341,8 @@ export class PipelinesMetrics extends React.Component<
 
 const columns: ITableColumn<ITableItem>[] = [
   {
-    id: "name",
-    name: "Name",
+    id: "title",
+    name: "Title",
     renderCell: renderSimpleCell,
     sortProps: {
       ariaLabelAscending: "Sorted A to Z",
@@ -413,8 +351,8 @@ const columns: ITableColumn<ITableItem>[] = [
     width: new ObservableValue(-30),
   },
   {
-    id: "totalBuilds",
-    name: "Total Builds",
+    id: "type",
+    name: "Type",
     renderCell: renderSimpleCell,
     sortProps: {
       ariaLabelAscending: "Sorted low to high",
@@ -423,19 +361,9 @@ const columns: ITableColumn<ITableItem>[] = [
     width: new ObservableValue(-30),
   },
   {
-    id: "totalDurationInMinutes",
-    name: "Total Duration",
-    renderCell: renderTotalDurationColumn,
-    sortProps: {
-      ariaLabelAscending: "Sorted low to high",
-      ariaLabelDescending: "Sorted high to low",
-    },
-    width: new ObservableValue(-40),
-  },
-  {
-    id: "averageBuildTimeInMinutes",
-    name: "Avg Duration",
-    renderCell: renderAvarageDurationColumn,
+    id: "state",
+    name: "State",
+    renderCell: renderSimpleCell,
     sortProps: {
       ariaLabelAscending: "Sorted low to high",
       ariaLabelDescending: "Sorted high to low",
@@ -443,41 +371,3 @@ const columns: ITableColumn<ITableItem>[] = [
     width: new ObservableValue(-40),
   },
 ];
-
-function renderTotalDurationColumn(
-  rowIndex: number,
-  columnIndex: number,
-  tableColumn: ITableColumn<ITableItem>,
-  tableItem: ITableItem
-): JSX.Element {
-  return (
-    <SimpleTableCell
-      columnIndex={columnIndex}
-      tableColumn={tableColumn}
-      key={"col-" + columnIndex}
-    >
-      <div className="flex-row wrap-text">
-        <span>{tableItem.totalDurationInMinutes} minutes</span>
-      </div>
-    </SimpleTableCell>
-  );
-}
-
-function renderAvarageDurationColumn(
-  rowIndex: number,
-  columnIndex: number,
-  tableColumn: ITableColumn<ITableItem>,
-  tableItem: ITableItem
-): JSX.Element {
-  return (
-    <SimpleTableCell
-      columnIndex={columnIndex}
-      tableColumn={tableColumn}
-      key={"col-" + columnIndex}
-    >
-      <div className="flex-row wrap-text">
-        <span>{tableItem.averageBuildTimeInMinutes} minutes</span>
-      </div>
-    </SimpleTableCell>
-  );
-}

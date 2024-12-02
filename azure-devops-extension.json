@@ -2,15 +2,13 @@
     "manifestVersion": 1,
     "id": "repository-insights",
     "publisher": "danilocolombi",
-    "version": "1.0.245",
+    "version": "1.0.252",
     "name": "Repository Insights",
     "description": "Azure DevOps Extension",
     "categories": [
         "Azure Repos",
         "Azure Boards",
-        "Azure Pipelines",
-        "Azure Test Plans",
-        "Azure Artifacts"
+        "Azure Pipelines"
     ],
     "targets": [
         {

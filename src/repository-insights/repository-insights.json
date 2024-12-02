@@ -7,12 +7,9 @@
       "properties": {
         "name": "Repository Insights",
         "uri": "dist/repository-insights/repository-insights.html",
-        "icon": {
-          "light": "static/app_folder.png",
-          "dark": "static/app_folder.png"
-        }
+        "iconName": "ExploreData"
       }
     }
   ],
-  "scopes": ["vso.analytics", "vso.code", "vso.code_status", "vso.code_status", "vso.build", "vso.work"]
+  "scopes": ["vso.code", "vso.code_status", "vso.build", "vso.work"]
 }

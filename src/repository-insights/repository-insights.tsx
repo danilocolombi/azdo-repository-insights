@@ -3,7 +3,7 @@ import * as SDK from "azure-devops-extension-sdk";
 
 import "./repository-insights.scss";
 import { Page } from "azure-devops-ui/Page";
-import { showRootComponent } from "../../Common";
+import { showRootComponent } from "../Common";
 import {
   TabList,
   TabSize,

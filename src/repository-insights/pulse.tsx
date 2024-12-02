@@ -55,7 +55,7 @@ import {
   getOneWeekAgo,
   getOneYearAgo,
   isValidDate,
-} from "../../utils";
+} from "../utils";
 
 interface PulseState {
   pullRequests: GitPullRequest[];

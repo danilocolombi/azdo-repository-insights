@@ -18,7 +18,6 @@ import {
   GitVersionOptions,
   GitVersionType,
 } from "azure-devops-extension-api/Git/Git";
-import { formatBranchFriendlyName } from "../../utils";
 import {
   Area,
   AreaChart,
@@ -28,6 +27,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card } from "azure-devops-ui/Card";
+import { formatBranchFriendlyName } from "../utils";
 
 interface ContributorState {
   commits: GitCommitRef[];

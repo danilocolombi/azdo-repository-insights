@@ -1,11 +1,13 @@
 {
     "manifestVersion": 1,
-    "id": "samples-dev",
-    "publisher": "ms-samples",
-    "version": "1.0.396",
-    "name": "Extension Sample [DEV]",
-    "description": "Azure DevOps extension sample. For development purposes only.",
+    "id": "repository-insights-dev",
+    "publisher": "danilocolombi",
+    "version": "1.0.247",
+    "name": "Repository Insights",
+    "description": "Azure DevOps Extension",
     "categories": [
+        "Azure Repos",
+        "Azure Boards",
         "Azure Pipelines"
     ],
     "targets": [
@@ -30,6 +32,5 @@
             "path": "dist",
             "addressable": true
         }
-    ],
-    "baseUri": "https://localhost:3000"
+    ]
 }
