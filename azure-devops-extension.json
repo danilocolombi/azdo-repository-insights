@@ -1,39 +1,41 @@
 {
-    "manifestVersion": 1,
-    "id": "repository-insights",
-    "publisher": "danilocolombi",
-    "version": "0.0.1",
-    "name": "Repository Insights",
-    "description": "extension introduces a new Hub within the Azure Repos Hub Group, designed to provide a comprehensive overview of your repository",
-    "categories": [
-        "Azure Repos",
-        "Azure Boards",
-        "Azure Pipelines"
-    ],
-    "targets": [
-        {
-            "id": "Microsoft.VisualStudio.Services"
-        }
-    ],
-    "icons": {
-        "default": "logo.png"
+  "manifestVersion": 1,
+  "id": "repository-insights",
+  "publisher": "danilocolombi",
+  "version": "0.1.1",
+  "name": "Repository Insights",
+  "description": "extension introduces a new Hub within the Azure Repos Hub Group, designed to provide a comprehensive overview of your repository",
+  "public": true,
+
+  "categories": ["Azure Repos", "Azure Boards", "Azure Pipelines"],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "icons": {
+    "default": "logo.png"
+  },
+  "content": {
+    "details": {
+      "path": "README.md"
     },
-    "content": {
-        "details": {
-          "path": "README.md"
-        },
-        "license": {
-          "path": "LICENSE"
-        }
-      },
-    "files": [
-        {
-            "path": "static",
-            "addressable": true
-        },
-        {
-            "path": "dist",
-            "addressable": true
-        }
-    ]
+    "license": {
+      "path": "LICENSE"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danilocolombi/azdo-repository-insights"
+  },
+  "files": [
+    {
+      "path": "static",
+      "addressable": true
+    },
+    {
+      "path": "dist",
+      "addressable": true
+    }
+  ]
 }
