@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "repository-insights",
   "publisher": "danilocolombi",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "name": "Repository Insights",
   "description": "extension introduces a new Hub within the Azure Repos Hub Group, designed to provide a comprehensive overview of your repository",
   "public": true,
