@@ -22,7 +22,7 @@ export function getOneWeekAgo(): Date {
 
 export function getOneYearAgo(): Date {
   const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 10);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   return oneYearAgo;
 }
 
