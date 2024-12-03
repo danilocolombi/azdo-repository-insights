@@ -4,7 +4,7 @@
     "publisher": "danilocolombi",
     "version": "0.0.1",
     "name": "Repository Insights",
-    "description": "Azure DevOps Extension",
+    "description": "extension introduces a new Hub within the Azure Repos Hub Group, designed to provide a comprehensive overview of your repository",
     "categories": [
         "Azure Repos",
         "Azure Boards",

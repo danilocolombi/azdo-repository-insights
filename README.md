@@ -8,29 +8,29 @@ Enhance your development workflow with Repository Insights for Azure Repos! This
 - Pipelines
 - Work Items
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/preview.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/preview.png?raw=true)
 
 # Features
 
 1. Pulse
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/pulse.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/pulse.png?raw=true)
 
 2. Contributors
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/contributors.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/contributors.png?raw=true)
 
 3. Dependencies
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/dependencies.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/dependencies.png?raw=true)
 
 4. Pipelines Metrics
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/pipelines-metrics.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/pipelines-metrics.png?raw=true)
 
 5. Work Items Metrics
 
-![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/images/work-items-metrics.png?raw=true)
+![](https://github.com/danilocolombi/azdo-repository-insights/blob/main/docs/work-items-metrics.png?raw=true)
 
 # Install
 
